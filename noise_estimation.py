@@ -7,6 +7,8 @@ import numpy as np
 from cv2 import imread
 from utils import im2patch, im2double
 import time
+import matplotlib.pyplot as plt
+
 
 def noise_estimate(im, pch_size=8):
     '''
@@ -46,12 +48,18 @@ def noise_estimate(im, pch_size=8):
 if __name__ == '__main__':
     im = imread('./lena.png')
     im = im2double(im)
+    print(np.min(im), np.max(im))
 
     noise_level = [5, 15, 20, 30, 40]
 
-    for level in noise_level:
-        sigma = level / 255
+    def rgb2gray(rgb):
+        return np.dot(rgb[..., :], [0.299, 0.587, 0.144])
 
+    im = rgb2gray(im)
+    print(im.shape)
+
+    for i, level in enumerate(noise_level):
+        sigma = level / 255
         im_noise = im + np.random.randn(*im.shape) * sigma
 
         start = time.time()
@@ -59,7 +67,10 @@ if __name__ == '__main__':
         end = time.time()
         time_elapsed = end -start
 
+        plt.subplot(2, 3, i + 1)
+        plt.imshow(im_noise, cmap='gray')
+        plt.title('Truth noise level %.2f; estimated %.2f' % (level, est_level*255))
+
         str_p = "Time: {0:.4f}, Ture Level: {1:6.4f}, Estimated Level: {2:6.4f}"
         print(str_p.format(time_elapsed, level, est_level*255))
-
-
+    plt.show()

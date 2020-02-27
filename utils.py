@@ -2,9 +2,11 @@
 # -*- coding:utf-8 -*-
 # Power by Zongsheng Yue 2019-01-07 15:13:19
 
-import numpy as np
 import sys
-from math import floor
+import numpy as np
+from sklearn.cluster import KMeans, SpectralClustering
+from scipy.ndimage.filters import gaussian_filter
+
 
 def im2patch(im, pch_size, stride=1):
     '''
@@ -43,6 +45,17 @@ def im2patch(im, pch_size, stride=1):
 
     return pch.reshape((C, pch_H, pch_W, num_pch))
 
+
+def im2patch_mask(im, mask, pch_size, stride=1):
+    threshold = 1
+    im_patches = im2patch(im, pch_size, stride)
+    mask_patches = im2patch(mask.astype(bool), pch_size, stride)
+    tmp1 = np.sum(mask_patches, axis=(0, 1, 2))
+    tmp2 = threshold * np.prod(im_patches.shape[:3])
+    indices = tmp1 >= tmp2
+    return im_patches[:, :, :, indices]
+
+
 def im2double(im):
     '''
     Input:
@@ -56,3 +69,25 @@ def im2double(im):
     out = (im - min_val) / (max_val - min_val)
 
     return out
+
+
+def calc_fg_mask(image, sigma=5):
+    num_labels = 2
+
+    blur_image = gaussian_filter(image.squeeze(), sigma)
+    features = blur_image.flatten()[..., None]
+
+    kmeans = KMeans(n_clusters=num_labels)
+    seg = kmeans.fit_predict(features)
+
+    # foreground has greater intensities
+    mean_int = [np.mean(features[seg==l, 0]) for l in range(num_labels)]
+    order = np.argsort(mean_int)
+    seg = order[seg] > 0
+    seg = seg.reshape(image.shape)
+
+    # import matplotlib.pyplot as plt
+    # plt.imshow(seg.squeeze())
+    # plt.show()
+
+    return seg

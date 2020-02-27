@@ -5,12 +5,12 @@
 
 import numpy as np
 from cv2 import imread
-from utils import im2patch, im2double
+from utils import im2patch, im2double, im2patch_mask, calc_fg_mask
 import time
 import matplotlib.pyplot as plt
 
 
-def noise_estimate(im, pch_size=8):
+def noise_estimate(im, fg=False, pch_size=8):
     '''
     Implement of noise level estimation of the following paper:
     Chen G , Zhu F , Heng P A . An Efficient Statistical Method for Image Noise Level Estimation[C]// 2015 IEEE International Conference
@@ -28,7 +28,11 @@ def noise_estimate(im, pch_size=8):
         im = np.expand_dims(im, axis=0)
 
     # image to patch
-    pch = im2patch(im, pch_size, 3)  # C x pch_size x pch_size x num_pch tensor
+    if fg:
+        mask = calc_fg_mask(im)
+        pch = im2patch_mask(im, mask, pch_size, 3)
+    else:
+        pch = im2patch(im, pch_size, 3)  # C x pch_size x pch_size x num_pch tensor
     num_pch = pch.shape[3]
     pch = pch.reshape((-1, num_pch))  # d x num_pch matrix
     d = pch.shape[0]

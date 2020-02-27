@@ -6,6 +6,8 @@ import sys
 import numpy as np
 from sklearn.cluster import KMeans, SpectralClustering
 from scipy.ndimage.filters import gaussian_filter
+from scipy.ndimage import gaussian_gradient_magnitude
+import matplotlib.pyplot as plt
 
 
 def im2patch(im, pch_size, stride=1):
@@ -46,14 +48,33 @@ def im2patch(im, pch_size, stride=1):
     return pch.reshape((C, pch_H, pch_W, num_pch))
 
 
-def im2patch_mask(im, mask, pch_size, stride=1):
+def im2patch_mask(im, mask, pch_size, stride=1, output_indices=False):
     threshold = 1
     im_patches = im2patch(im, pch_size, stride)
     mask_patches = im2patch(mask.astype(bool), pch_size, stride)
     tmp1 = np.sum(mask_patches, axis=(0, 1, 2))
     tmp2 = threshold * np.prod(im_patches.shape[:3])
     indices = tmp1 >= tmp2
-    return im_patches[:, :, :, indices]
+    im_patches = im_patches[:, :, :, indices]
+    if output_indices:
+        return im_patches, indices
+    else:
+        return im_patches
+
+
+def im2patch_mask_grad(im, mask, pch_size, stride=1):
+    portion = 1/2
+
+    im_patches, indices = im2patch_mask(im, mask, pch_size, stride, True)
+    grad = gaussian_gradient_magnitude(im, 3)
+    grad_patches = im2patch(grad, pch_size, stride)
+    grad_patches = grad_patches[:, :, :, indices]
+    flat = np.sum(np.abs(grad_patches), axis=(0, 1, 2))
+    
+    order = np.argsort(flat)
+    order = order[: int(len(order) * portion)]
+    im_patches = im_patches[:, :, :, order]
+    return im_patches
 
 
 def im2double(im):
